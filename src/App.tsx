@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { io, Socket } from "socket.io-client";
 import { Container, Row, Col, Button } from 'reactstrap';
-import { Stream } from './components';
+import { Stream, Watch } from './components';
 import { ClientRole, ServerToClientEvents, ClientToServerEvents } from './types';
 import logo from './logo.svg';
 import 'bootstrap/dist/css/bootstrap.min.css';
@@ -39,11 +39,47 @@ function App() {
   const [role, setRole] = useState<null|ClientRole>(null);
   const sockRef = useRef<Socket<ServerToClientEvents, ClientToServerEvents>>();
 
+	const pcsRef = useRef<{ [socketId: string]: RTCPeerConnection }>({});
+	const localVideoRef = useRef<HTMLVideoElement>(null);
+	const localStreamRef = useRef<MediaStream>();
+
   const pc = createPeerConnection();
+
+  useEffect(() => {
+    const sendOffer = async () => {
+      const localSdp = await pc.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: true,
+      });
+      console.log('create offer success');
+
+      if (sockRef.current) {
+        await pc.setLocalDescription(new RTCSessionDescription(localSdp));
+        sockRef.current.emit('offer', {
+          sdp: localSdp,
+          offerSendID: sockRef.current.id,
+        });
+      }
+    };
+
+    sendOffer();
+  }, [ pc, sockRef ]);
 
   useEffect(() => {
     sockRef.current = io(REACT_APP_BACKEND_URL, {
       withCredentials: true
+    });
+
+    sockRef.current.on('offer', (data) => {
+      console.log('Offer', data);
+    });
+
+    sockRef.current.on('answer', (data) => {
+      console.log('Answer', data);
+    });
+
+    sockRef.current.on('candidate', (data) => {
+      console.log('Candidate', data);
     });
   }, []);
 
@@ -70,6 +106,17 @@ function App() {
           </Col>
           <Col>
             <Button onClick={startWatching} color='primary'>Watch</Button>
+          </Col>
+        </Row>
+        <Row>
+          <Col>
+            {role && (
+              role === 'streamer' ? (
+                <Stream />
+              ) : (
+                <Watch />
+              )
+            )}
           </Col>
         </Row>
       </Container>
