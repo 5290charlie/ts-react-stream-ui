@@ -136,7 +136,7 @@ export const Watch = () => {
     const respondOffer = async () => {
       const pc = createPeerConnection();
 
-      if (sockRef.current && client && pc && msg.data.type === 'offer' && msg.data.sdp) {
+      if (sockRef.current && pc && msg.data.type === 'offer' && msg.client && msg.data.sdp) {
 				pcsRef.current = { ...pcsRef.current, [msg.client.id]: pc };
         await pc.setRemoteDescription(msg.data.sdp);
         console.log('answer set remote description success');
@@ -146,12 +146,14 @@ export const Watch = () => {
         });
         await pc.setLocalDescription(new RTCSessionDescription(localSdp));
         sockRef.current.emit('answer', {
-          client,
+          client: msg.client,
           data: {
             type: 'answer',
             sdp: localSdp
           }
         });
+      } else {
+        console.warn('twats', sockRef.current, pc, msg);
       }
     };
 

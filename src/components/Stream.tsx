@@ -57,8 +57,15 @@ export const Stream = () => {
 			const pc = new RTCPeerConnection(pc_config);
 
 			pc.onicecandidate = (e) => {
-				if (!(sockRef.current && e.candidate)) return;
+				if (!(client && sockRef.current && e.candidate)) return;
 				console.log('onicecandidate');
+        sockRef.current.emit('candidate', {
+          client,
+          data: {
+            type: 'candidate',
+            candidate: e.candidate
+          }
+        })
 				// sockRef.current.emit('candidate', {
 				// 	candidate: e.candidate,
 				// 	candidateSendID: sockRef.current.id,
@@ -98,7 +105,7 @@ export const Stream = () => {
 			console.error(e);
 			return undefined;
 		}
-	}, []);
+	}, [client]);
 
 	const getLocalStream = useCallback(async () => {
 		try {
